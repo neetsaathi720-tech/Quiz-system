@@ -1,0 +1,156 @@
+<!-- ===============================
+     Quiz Sharing System (Frontend)
+     =============================== -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Quiz System</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+    #quizBox, #resultBox { max-width: 800px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 10px; }
+    .question-img { max-width: 100%; margin: 10px 0; }
+    .options label { display:block; margin: 8px 0; padding: 10px; border:1px solid #ddd; border-radius: 6px; cursor: pointer; }
+    .nav-btn { margin: 10px 5px; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; }
+    .nav-btn:hover { background: #0056b3; }
+    #timer { font-weight: bold; color: darkred; margin: 10px 0; }
+    #shareLinkBox { margin: 20px 0; padding: 15px; border: 2px dashed #888; border-radius: 10px; background: #fdfdfd; }
+    .flag { color: red; cursor: pointer; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="uploadArea" style="padding:20px; text-align:center;">
+  <h2>Upload Quiz PDF (Admin Only)</h2>
+  <input type="file" id="pdfFile">
+  <button onclick="generateLink()" style="margin-top:10px; padding:10px;">Generate Quiz Link</button>
+  <div id="shareLinkBox" style="display:none;">
+    <p><b>Share this link with your friends:</b></p>
+    <input type="text" id="shareLink" readonly style="width:100%; padding:10px;">
+    <button onclick="copyLink()">Copy Link</button>
+  </div>
+</div>
+
+<div id="quizBox" style="display:none;">
+  <h2>Image Quiz</h2>
+  <div id="timer"></div>
+  <div id="questionArea"></div>
+  <div id="buttons"></div>
+  <div class="flag" onclick="flagQuestion()">🚩 Flag & Review</div>
+  <button onclick="submitTest()" style="float:right;">Submit Test</button>
+</div>
+
+<div id="resultBox" style="display:none;"></div>
+
+<script>
+let questions = [], current = 0, answers = {}, flags = {}, timerInt, time = 30*60;
+let quizId = "", attemptKey = "";
+
+function generateLink(){
+  let randomId = Math.random().toString(36).substring(2,8);
+  quizId = "MS_Kriyansh_Quiz_" + randomId;
+  let fakeLink = "https://Smarty/" + quizId;
+  document.getElementById("shareLink").value = fakeLink;
+  document.getElementById("shareLinkBox").style.display = "block";
+  alert("Quiz link generated successfully!");
+}
+
+function copyLink(){
+  let copyText = document.getElementById("shareLink");
+  copyText.select(); document.execCommand("copy");
+  alert("Link copied!");
+}
+
+// --- Simulated Quiz Start from Link ---
+window.onload = function(){
+  let url = window.location.href;
+  if(url.includes("MS_Kriyansh_Quiz")){
+    quizId = url.split("MS_Kriyansh_Quiz")[1] || "demo";
+    attemptKey = "attempts_"+quizId;
+
+    let attempts = localStorage.getItem(attemptKey) || 0;
+    if(attempts >= 5){
+      document.body.innerHTML = "<h2 style='text-align:center;color:red;'>❌ You have reached the maximum attempt limit (5). You cannot attempt this quiz anymore.</h2>";
+      return;
+    }
+    startQuiz();
+  }
+};
+
+function startQuiz(){
+  document.getElementById("uploadArea").style.display="none";
+  document.getElementById("quizBox").style.display="block";
+  questions = [
+    {id:1, image:"https://dummyimage.com/600x200/000/fff&text=Q1+Image", options:["1","2","3","4"], answer:"1"},
+    {id:2, image:"https://dummyimage.com/600x200/222/fff&text=Q2+Image", options:["1","2","3","4"], answer:"2"}
+  ];
+  startTimer();
+  showQuestion(0);
+}
+
+function startTimer(){
+  timerInt=setInterval(()=>{
+    let m=Math.floor(time/60),s=time%60;
+    document.getElementById("timer").innerText=`Time Left: ${m}M:${s}S`;
+    time--; if(time<0){ clearInterval(timerInt); submitTest(true); }
+  },1000);
+}
+
+function showQuestion(i){
+  current=i; let q=questions[i];
+  let html=`<h3>Q${q.id}</h3><img src="${q.image}" class="question-img">`;
+  html+=`<div class="options">`;
+  q.options.forEach((opt,idx)=>{
+    let letter=idx+1;
+    html+=`<label><input type="radio" name="opt" value="${letter}" ${(answers[q.id]==letter?"checked":"")}> Option ${letter}</label>`;
+  });
+  html+=`</div>`;
+  document.getElementById("questionArea").innerHTML=html;
+  document.getElementById("buttons").innerHTML=
+    `<button class="nav-btn" onclick="prev()">Previous</button>
+     <button class="nav-btn" onclick="skip()">Skip</button>
+     <button class="nav-btn" onclick="saveNext()">Save & Next</button>`;
+}
+
+function prev(){ if(current>0) showQuestion(current-1); }
+function skip(){ if(current<questions.length-1) showQuestion(current+1); }
+function saveNext(){
+  let sel=document.querySelector("input[name=opt]:checked");
+  if(!sel){ alert("Choose an option!"); return; }
+  answers[questions[current].id]=sel.value;
+  if(current<questions.length-1) showQuestion(current+1);
+}
+function flagQuestion(){ flags[questions[current].id]=true; alert("Flagged for review!"); }
+
+function submitTest(timeout=false){
+  if(!timeout && !confirm("Submit test?")) return;
+  clearInterval(timerInt);
+  let score=0,right=0,wrong=0,attempt=0;
+  questions.forEach(q=>{
+    if(answers[q.id]){
+      attempt++;
+      if(answers[q.id]==q.answer){ score+=4; right++; }
+      else { score-=1; wrong++; }
+    }
+  });
+  let unattempt=questions.length-attempt;
+  let perc=Math.round((score/(questions.length*4))*100);
+  document.getElementById("quizBox").style.display="none";
+  document.getElementById("resultBox").style.display="block";
+  document.getElementById("resultBox").innerHTML=`
+    <div style="background:#eef;padding:20px;border-radius:10px;">
+      <h2>Your Test is Submitted ✅</h2>
+      <p>Attempted: ${attempt}</p>
+      <p>Unattempted: ${unattempt}</p>
+      <p>Right: ${right}</p>
+      <p>Wrong: ${wrong}</p>
+      <p>Score: ${score}/${questions.length*4}</p>
+      <p>Percentage: ${perc}%</p>
+    </div>
+  `;
+  let attempts = localStorage.getItem(attemptKey) || 0;
+  localStorage.setItem(attemptKey, parseInt(attempts)+1);
+}
+</script>
+</body>
+</html>
