@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Quiz System</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    #uploadBox, #quizBox { border: 1px dashed gray; padding: 20px; margin: 10px 0; }
+    button { margin-top: 10px; padding: 8px 15px; }
+    input[type="text"] { width: 100%; padding: 5px; }
+  </style>
+</head>
+<body>
+
+<h2>Upload Quiz PDF (Admin Only)</h2>
+<div id="uploadBox">
+  <input type="file" id="pdfFile">
+  <button onclick="generateQuizLink()">Generate Quiz Link</button>
+  <div id="shareLink" style="margin-top:15px;display:none;">
+    <b>Share this link with your friends:</b><br>
+    <input type="text" id="quizLink" readonly>
+    <button onclick="copyLink()">Copy Link</button>
+  </div>
+</div>
+
+<div id="quizBox" style="display:none;">
+  <h2>Quiz Started 📘</h2>
+  <p id="quizInfo"></p>
+  <button onclick="startQuiz()">Start Quiz</button>
+</div>
+
+<script>
+function generateQuizLink(){
+  let file=document.getElementById("pdfFile").files[0];
+  if(!file){ alert("Please upload a PDF first!"); return; }
+  
+  // Unique quiz ID
+  let quizId="quiz_"+Math.random().toString(36).substring(2,8);
+  
+  // Store file name in localStorage (in real use → backend DB)
+  localStorage.setItem(quizId,file.name);
+  
+  // Generate link
+  let url=window.location.origin+window.location.pathname+"?quiz="+quizId;
+  document.getElementById("quizLink").value=url;
+  document.getElementById("shareLink").style.display="block";
+}
+
+function copyLink(){
+  let link=document.getElementById("quizLink");
+  link.select();
+  document.execCommand("copy");
+  alert("Link copied: "+link.value);
+}
+
+window.onload=function(){
+  let params=new URLSearchParams(window.location.search);
+  if(params.has("quiz")){
+    let quizId=params.get("quiz");
+    let file=localStorage.getItem(quizId);
+    if(file){
+      document.getElementById("uploadBox").style.display="none";
+      document.getElementById("quizBox").style.display="block";
+      document.getElementById("quizInfo").innerText="Quiz Loaded: "+file;
+    }
+  }
+}
+
+function startQuiz(){
+  alert("Quiz system start ho gaya! (Questions show karna yaha add karo)");
+}
+</script>
+
+</body>
+</html>
